@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Profile } from "../types";
 
 interface ProfileListProps {
@@ -5,6 +6,9 @@ interface ProfileListProps {
 }
 
 const ProfileList = ({ profiles }: ProfileListProps) => {
+  // Track image loading errors
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     try {
@@ -38,19 +42,24 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
     }
   };
 
+  const handleImageError = (username: string) => {
+    setImageErrors(prev => ({...prev, [username]: true}));
+  };
+
   return (
     <div className="profiles-list">
       {profiles.map((profile) => (
         <div
-          key={profile.id || profile.instagram_id}
+          key={profile.id || profile.instagram_id || profile.username}
           className="profile-list-item"
         >
           <div className="profile-list-avatar">
-            {profile.profile_pic_url ? (
+            {profile.profile_pic_url && !imageErrors[profile.username || ''] ? (
               <img
-                src={profile.profile_pic_url || "/placeholder.svg"}
+                src={profile.profile_pic_url}
                 alt={profile.username || "Profile"}
                 className="avatar-image"
+                onError={() => profile.username && handleImageError(profile.username)}
               />
             ) : (
               <div className="avatar-placeholder">

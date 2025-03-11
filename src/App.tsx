@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import FilterPanel from "./components/FilterPanel";
 import ProfileList from "./components/ProfileList";
@@ -15,6 +13,10 @@ import type {
 const API_BASE_URL = import.meta.env.DEV
   ? "/api"
   : "https://spark-scraper-api.sparkonomy.com";
+
+// Profile picture URL template
+const PROFILE_PIC_URL_TEMPLATE =
+  "https://sparkonomy.blr1.digitaloceanspaces.com/instagram_profile_pictures/{username}.jpg";
 
 function App() {
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
@@ -109,27 +111,37 @@ function App() {
         ? data
         : data.results || data.profiles || [];
 
-      // Ensure all required fields exist with defaults
-      const normalizedProfiles = profilesData.map((profile: Profile) => ({
-        id:
-          profile.id ||
-          profile.instagram_id ||
-          profile.username ||
-          Math.random().toString(36),
-        username: profile.username || "",
-        full_name: profile.full_name || "",
-        biography: profile.biography || "",
-        profile_pic_url: profile.profile_pic_url || "",
-        followed_by_count: profile.followed_by_count || 0,
-        follow_count: profile.follow_count || 0,
-        posts_count: profile.posts_count || 0,
-        is_verified: profile.is_verified || false,
-        update_time:
-          profile.update_time ||
-          profile.create_time ||
-          new Date().toISOString(),
-        ...profile, // Keep all other fields
-      }));
+      // Ensure all required fields exist with defaults and fix profile pictures
+      const normalizedProfiles = profilesData.map((profile: Profile) => {
+        const username = profile.username || "";
+        // Generate profile picture URL if not provided
+        const profile_pic_url =
+          profile.profile_pic_url ||
+          (username
+            ? PROFILE_PIC_URL_TEMPLATE.replace("{username}", username)
+            : "");
+
+        return {
+          id:
+            profile.id ||
+            profile.instagram_id ||
+            username ||
+            Math.random().toString(36),
+          username,
+          full_name: profile.full_name || "",
+          biography: profile.biography || "",
+          profile_pic_url,
+          followed_by_count: profile.followed_by_count || 0,
+          follow_count: profile.follow_count || 0,
+          posts_count: profile.posts_count || 0,
+          is_verified: profile.is_verified || false,
+          update_time:
+            profile.update_time ||
+            profile.create_time ||
+            new Date().toISOString(),
+          ...profile, // Keep all other fields
+        };
+      });
 
       // If loading more, append to existing profiles
       setProfiles((prev) =>

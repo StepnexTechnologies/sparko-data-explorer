@@ -11,6 +11,18 @@ export default defineConfig({
         target: "https://spark-scraper-api.sparkonomy.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
+        secure: false, // Accept self-signed certificates
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (_, req) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
       },
     },
   },
@@ -18,4 +30,3 @@ export default defineConfig({
     sourcemap: false,
   },
 })
-
