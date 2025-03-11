@@ -1,11 +1,14 @@
 import { useState } from "react";
 import type { Profile } from "../types";
+import ProfileDetailModal from "./ProfileDetailModal";
 
 interface ProfileListProps {
   profiles: Profile[];
 }
 
 const ProfileList = ({ profiles }: ProfileListProps) => {
+  // Track selected profile for modal
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   // Track image loading errors
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -42,122 +45,204 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
     }
   };
 
-  const handleImageError = (username: string) => {
-    setImageErrors(prev => ({...prev, [username]: true}));
+  const handleImageError = (profileId: string) => {
+    setImageErrors((prev) => ({ ...prev, [profileId]: true }));
+  };
+
+  // Get profile unique identifier for tracking image errors
+  const getProfileId = (profile: Profile): string => {
+    return profile.id || profile.instagram_id || profile.username || "";
+  };
+
+  const handleProfileClick = (profile: Profile) => {
+    setSelectedProfile(profile);
+  };
+
+  const closeModal = () => {
+    setSelectedProfile(null);
+  };
+
+  // Dynamically get key details to display on the card
+  const getDisplayDetails = (profile: Profile) => {
+    const details = [];
+
+    // Add category info if available
+    if (profile.category_name) {
+      details.push({ label: "Category", value: profile.category_name });
+    } else if (profile.business_category_name) {
+      details.push({
+        label: "Business",
+        value: profile.business_category_name,
+      });
+    }
+
+    // Add website if available
+    if (profile.external_url) {
+      details.push({
+        label: "Website",
+        value: profile.external_url,
+        isLink: true,
+      });
+    }
+
+    // Add email if available
+    if (profile.business_email) {
+      details.push({ label: "Email", value: profile.business_email });
+    }
+
+    return details;
+  };
+
+  // Dynamically get badges based on profile properties
+  const getProfileBadges = (profile: Profile) => {
+    const badges = [];
+
+    if (profile.is_business_account) {
+      badges.push({ text: "Business", type: "default" });
+    }
+
+    if (profile.is_professional_account) {
+      badges.push({ text: "Professional", type: "default" });
+    }
+
+    if (profile.is_private) {
+      badges.push({ text: "Private", type: "warning" });
+    }
+
+    return badges;
   };
 
   return (
-    <div className="profiles-list">
-      {profiles.map((profile) => (
-        <div
-          key={profile.id || profile.instagram_id || profile.username}
-          className="profile-list-item"
-        >
-          <div className="profile-list-avatar">
-            {profile.profile_pic_url && !imageErrors[profile.username || ''] ? (
-              <img
-                src={profile.profile_pic_url}
-                alt={profile.username || "Profile"}
-                className="avatar-image"
-                onError={() => profile.username && handleImageError(profile.username)}
-              />
-            ) : (
-              <div className="avatar-placeholder">
-                {(profile.username?.[0] || "?").toUpperCase()}
-              </div>
-            )}
-          </div>
+    <>
+      <div className="profiles-list">
+        {profiles.map((profile) => {
+          const profileId = getProfileId(profile);
+          const details = getDisplayDetails(profile);
+          const badges = getProfileBadges(profile);
 
-          <div className="profile-list-main">
-            <div className="profile-list-header">
-              <div className="profile-list-name">
-                <h3 className="username">
-                  {profile.username || "No username"}
-                  {profile.is_verified && (
-                    <span className="verified-badge" title="Verified">
-                      ✓
+          return (
+            <div
+              key={profileId}
+              className="profile-list-item"
+              onClick={() => handleProfileClick(profile)}
+            >
+              <div className="profile-list-avatar">
+                {profile.profile_pic_url && !imageErrors[profileId] ? (
+                  <img
+                    src={profile.profile_pic_url}
+                    alt={profile.username || "Profile"}
+                    className="avatar-image"
+                    onError={() => handleImageError(profileId)}
+                  />
+                ) : (
+                  <div className="avatar-placeholder">
+                    {(profile.username?.[0] || "?").toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              <div className="profile-list-main">
+                <div className="profile-list-header">
+                  <div className="profile-list-name">
+                    <h3 className="username">
+                      {profile.username || "No username"}
+                      {profile.is_verified && (
+                        <span className="verified-badge" title="Verified">
+                          ✓
+                        </span>
+                      )}
+                    </h3>
+                    <p className="fullname">{profile.full_name || ""}</p>
+                  </div>
+                  <div className="profile-list-stats">
+                    {profile.followed_by_count !== undefined && (
+                      <span className="stat">
+                        <strong>
+                          {profile.followed_by_count.toLocaleString()}
+                        </strong>{" "}
+                        followers
+                      </span>
+                    )}
+                    {profile.follow_count !== undefined && (
+                      <span className="stat">
+                        <strong>{profile.follow_count.toLocaleString()}</strong>{" "}
+                        following
+                      </span>
+                    )}
+                    {profile.posts_count !== undefined && (
+                      <span className="stat">
+                        <strong>{profile.posts_count.toLocaleString()}</strong>{" "}
+                        posts
+                      </span>
+                    )}
+                    {profile.igtv_videos_count !== undefined && (
+                      <span className="stat">
+                        <strong>
+                          {profile.igtv_videos_count.toLocaleString()}
+                        </strong>{" "}
+                        IGTV
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {profile.biography && (
+                  <p className="profile-list-bio">{profile.biography}</p>
+                )}
+
+                {details.length > 0 && (
+                  <div className="profile-list-details">
+                    {details.map((detail, index) => (
+                      <span key={index} className="detail-item">
+                        <strong>{detail.label}:</strong>{" "}
+                        {detail.isLink ? (
+                          <a
+                            href={detail.value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()} // Prevent triggering profile click
+                          >
+                            {detail.value}
+                          </a>
+                        ) : (
+                          detail.value
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="profile-list-footer">
+                  {badges.length > 0 && (
+                    <div className="profile-badges">
+                      {badges.map((badge, index) => (
+                        <span
+                          key={index}
+                          className={`badge ${
+                            badge.type === "warning" ? "badge-warning" : ""
+                          }`}
+                        >
+                          {badge.text}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {profile.update_time && (
+                    <span className="update-time">
+                      Last updated: {formatDate(profile.update_time)}
                     </span>
                   )}
-                </h3>
-                <p className="fullname">{profile.full_name || ""}</p>
-              </div>
-              <div className="profile-list-stats">
-                <span className="stat">
-                  <strong>{profile.followed_by_count?.toLocaleString()}</strong>{" "}
-                  followers
-                </span>
-                <span className="stat">
-                  <strong>{profile.follow_count?.toLocaleString()}</strong>{" "}
-                  following
-                </span>
-                <span className="stat">
-                  <strong>{profile.posts_count?.toLocaleString()}</strong> posts
-                </span>
-                {profile.igtv_videos_count !== undefined && (
-                  <span className="stat">
-                    <strong>
-                      {profile.igtv_videos_count.toLocaleString()}
-                    </strong>{" "}
-                    IGTV
-                  </span>
-                )}
+                </div>
               </div>
             </div>
+          );
+        })}
+      </div>
 
-            {profile.biography && (
-              <p className="profile-list-bio">{profile.biography}</p>
-            )}
-
-            <div className="profile-list-details">
-              {profile.category_name && (
-                <span className="detail-item">
-                  <strong>Category:</strong> {profile.category_name}
-                </span>
-              )}
-              {profile.business_category_name && (
-                <span className="detail-item">
-                  <strong>Business:</strong> {profile.business_category_name}
-                </span>
-              )}
-              {profile.external_url && (
-                <span className="detail-item">
-                  <strong>Website:</strong>{" "}
-                  <a
-                    href={profile.external_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {profile.external_url}
-                  </a>
-                </span>
-              )}
-              {profile.business_email && (
-                <span className="detail-item">
-                  <strong>Email:</strong> {profile.business_email}
-                </span>
-              )}
-            </div>
-
-            <div className="profile-list-footer">
-              <div className="profile-badges">
-                {profile.is_business_account && (
-                  <span className="badge">Business</span>
-                )}
-                {profile.is_professional_account && (
-                  <span className="badge">Professional</span>
-                )}
-                {profile.is_private && (
-                  <span className="badge badge-warning">Private</span>
-                )}
-              </div>
-              <span className="update-time">
-                Last updated: {formatDate(profile.update_time)}
-              </span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
+      {selectedProfile && (
+        <ProfileDetailModal profile={selectedProfile} onClose={closeModal} />
+      )}
+    </>
   );
 };
 

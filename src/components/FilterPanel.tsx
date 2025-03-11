@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import type { Filter, FilterOption } from "../types";
 import FilterItem from "./FilterItem";
@@ -14,14 +12,6 @@ interface FilterPanelProps {
   onClearFilters: () => void;
   loading: boolean;
 }
-
-const getFilterGroup = (field: string): string => {
-  if (field.includes("follow") || field.includes("count")) return "Metrics";
-  if (field.includes("is_") || field.includes("has_")) return "Profile Status";
-  if (field.includes("business")) return "Business Info";
-  if (field.includes("time")) return "Dates";
-  return "Basic Info";
-};
 
 const FilterPanel = ({
   filterOptions,
@@ -38,16 +28,6 @@ const FilterPanel = ({
     value: "",
   });
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  // Group filter options by type for better organization
-  const groupedOptions = filterOptions.reduce((acc, option) => {
-    const group = getFilterGroup(option.field);
-    if (!acc[group]) {
-      acc[group] = [];
-    }
-    acc[group].push(option);
-    return acc;
-  }, {} as Record<string, FilterOption[]>);
 
   // Auto-select first operator when field changes
   const handleFieldChange = (field: string) => {
@@ -270,16 +250,12 @@ const FilterPanel = ({
             onChange={(e) => handleFieldChange(e.target.value)}
           >
             <option value="">Select Field</option>
-            {Object.entries(groupedOptions).map(([group, options]) => (
-              <optgroup key={group} label={group}>
-                {options.map((option) => (
-                  <option key={option.field} value={option.field}>
-                    {option.field
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))}
-              </optgroup>
+            {filterOptions.map((option) => (
+              <option key={option.field} value={option.field}>
+                {option.field
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())}
+              </option>
             ))}
           </select>
         </div>

@@ -1,5 +1,3 @@
-"use client";
-
 import type { Filter, FilterOption } from "../types";
 
 interface FilterItemProps {
@@ -10,7 +8,7 @@ interface FilterItemProps {
 
 const FilterItem = ({ filter, onRemove, filterOptions }: FilterItemProps) => {
   const getFieldLabel = (field: string) => {
-    // Convert snake_case to Title Case
+    // Convert snake_case to Title Case dynamically
     return field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
@@ -62,4 +60,3 @@ const FilterItem = ({ filter, onRemove, filterOptions }: FilterItemProps) => {
 };
 
 export default FilterItem;
-    
