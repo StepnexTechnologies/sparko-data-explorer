@@ -1,14 +1,133 @@
 import { useEffect, useRef, useState } from "react";
 import type { Profile } from "../types";
 
+// Define a simple Post type for what we need
+interface Post {
+  shortcode: string;
+  caption?: string[] | null;
+  liked_by?: number | null;
+  comment_count?: number | null;
+  [key: string]: any; // Allow other properties
+}
+
 interface ProfileDetailModalProps {
   profile: Profile | null;
   onClose: () => void;
 }
 
+// API base URL with proxy for development
+const API_BASE_URL = import.meta.env.DEV
+  ? "/api"
+  : "https://spark-scraper-api.sparkonomy.com";
+
 const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = useState(false);
+  const [profilePosts, setProfilePosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+
+  // Fetch posts for this profile
+  useEffect(() => {
+    if (profile?.id) {
+      fetchProfilePosts(profile.id);
+    }
+  }, [profile]);
+
+  const fetchProfilePosts = async (profileId: string) => {
+    try {
+      setLoadingPosts(true);
+
+      // Use POST method instead of GET - this fixes the 405 Method Not Allowed error
+      const response = await fetch(
+        `${API_BASE_URL}/profiles/posts/${profileId}`,
+        {
+          method: "POST", // Changed from GET to POST
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          // Send an empty body or you can add parameters if needed
+          body: JSON.stringify({}),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Normalize posts data
+      const normalizedPosts = Array.isArray(data)
+        ? data
+        : data.posts || data.results || [];
+
+      setProfilePosts(normalizedPosts);
+    } catch (err) {
+      console.error("Failed to fetch profile posts:", err);
+      setProfilePosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  // Export posts data as CSV
+  const exportPostsCSV = () => {
+    if (profilePosts.length === 0) {
+      return;
+    }
+
+    // For posts, include all fields for export
+    const getAllKeys = (posts: Post[]): string[] => {
+      const keySet = new Set<string>();
+      posts.forEach((post) => {
+        Object.keys(post).forEach((key) => keySet.add(key));
+      });
+      return Array.from(keySet);
+    };
+
+    const keys = getAllKeys(profilePosts);
+
+    // Create CSV header row
+    const header = keys.join(",");
+
+    // Create CSV rows for each post
+    const rows = profilePosts.map((post) => {
+      return keys
+        .map((key) => {
+          const value = post[key as keyof Post];
+          if (value === null || value === undefined) {
+            return "";
+          }
+          if (Array.isArray(value)) {
+            // For arrays like caption, join with space and properly escape
+            return `"${value.join(" ").replace(/"/g, '""')}"`;
+          }
+          if (typeof value === "object") {
+            return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+          }
+          return `"${String(value).replace(/"/g, '""')}"`;
+        })
+        .join(",");
+    });
+
+    // Combine header and rows
+    const csv = [header, ...rows].join("\n");
+
+    // Create download link
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `posts_${profile?.username || "profile"}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -118,6 +237,22 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
     return String(value);
   };
 
+  // Format caption from array to string
+  const formatCaption = (caption: string[] | null | undefined): string => {
+    if (!caption || caption.length === 0) {
+      return "No caption";
+    }
+    return caption.join(" ");
+  };
+
+  // Ensure values are displayed properly even when null/undefined
+  const safeNumber = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+    return value.toLocaleString();
+  };
+
   // Safely get username for display
   const getUsername = () => {
     return profile.username || "No username";
@@ -130,7 +265,6 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
 
   // Handle image loading error
   const handleImageError = () => {
-    console.log("Profile modal image failed to load");
     setImageError(true);
   };
 
@@ -175,8 +309,76 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
         </div>
 
         <div className="modal-content">
-          {/* All profile fields in a simple list */}
+          {/* Posts Section - Only showing the 4 fields requested */}
+          <div className="profile-posts-section">
+            <div className="section-header">
+              <h3 className="section-title">Posts</h3>
+              {profilePosts.length > 0 && (
+                <button
+                  className="button button-sm button-outline"
+                  onClick={exportPostsCSV}
+                >
+                  Export Posts
+                </button>
+              )}
+            </div>
+
+            {loadingPosts ? (
+              <div className="loading-posts">
+                <div className="loading-spinner"></div>
+                <span>Loading posts...</span>
+              </div>
+            ) : profilePosts.length === 0 ? (
+              <div className="no-posts-message">
+                No posts found for this profile.
+              </div>
+            ) : (
+              <div className="posts-list">
+                <table className="posts-table">
+                  <thead>
+                    <tr>
+                      <th>Shortcode</th>
+                      <th>Caption</th>
+                      <th>Likes</th>
+                      <th>Comments</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profilePosts.map((post, index) => (
+                      <tr key={post.shortcode || index} className="post-item">
+                        <td className="post-shortcode">
+                          {post.shortcode ? (
+                            <a
+                              href={`https://www.instagram.com/p/${post.shortcode}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {post.shortcode}
+                            </a>
+                          ) : (
+                            "N/A"
+                          )}
+                        </td>
+                        <td className="post-caption">
+                          {formatCaption(post.caption)}
+                        </td>
+                        <td className="post-likes">
+                          {safeNumber(post.liked_by)}
+                        </td>
+                        <td className="post-comments">
+                          {safeNumber(post.comment_count)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Profile Details Section */}
           <div className="profile-all-fields-section">
+            <h3 className="section-title">Profile Details</h3>
             <div className="profile-details-grid">
               {Object.entries(profile)
                 .filter(

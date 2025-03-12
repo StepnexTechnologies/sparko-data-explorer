@@ -68,9 +68,7 @@ const FilterPanel = ({
     const selectedOption = filterOptions.find(
       (option) => option.field === newFilter.field
     );
-    if (!selectedOption || !newFilter.operator) {
-      return null;
-    }
+    if (!selectedOption || !newFilter.operator) return null;
 
     const { data_type } = selectedOption;
 
@@ -335,7 +333,7 @@ const FilterPanel = ({
             onClick={onSearch}
             disabled={loading}
           >
-            Apply Filters
+            Search
           </button>
         </div>
       </div>

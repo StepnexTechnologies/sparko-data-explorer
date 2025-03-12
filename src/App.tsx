@@ -253,7 +253,7 @@ function App() {
                   className="button button-outline button-sm"
                   onClick={() => setShowExportOptions(!showExportOptions)}
                 >
-                  Export
+                  Export Profiles
                 </button>
                 {showExportOptions && (
                   <div className="dropdown-menu">

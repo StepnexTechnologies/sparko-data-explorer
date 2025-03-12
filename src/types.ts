@@ -81,3 +81,36 @@ export interface Profile {
   tag?: string
 }
 
+export interface Post {
+  shortcode: string
+  type_name?: string
+  accessibility_caption?: string[]
+  coauthor_producers?: string[]
+  comments_disabled?: boolean
+  height?: number
+  width?: number
+  display_url?: string[]
+  liked_by?: number
+  preview_like?: number
+  caption?: string[]
+  comment_count?: number
+  tagged_users?: string[]
+  has_audio?: boolean
+  is_video?: boolean
+  like_and_view_counts_disabled?: boolean
+  location?: string
+  pinned_for_users?: string[]
+  product_type?: string
+  posted_at?: number
+  thumbnail_src?: string
+  title?: string
+  video_url?: string[]
+  video_views?: number[]
+  clips_music_attribution_info_artist_name?: string
+  clips_music_attribution_info_song_name?: string
+  is_published?: boolean
+  video_duration?: number
+  create_time?: string
+  update_time?: string
+  profile_id?: number
+}
