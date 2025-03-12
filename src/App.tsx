@@ -26,13 +26,10 @@ function App() {
   const [offset, setOffset] = useState<number>(0);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-  // Fetch filter options and initial profiles on mount
+  // Fetch filter options on mount
   useEffect(() => {
     fetchFilterOptions();
-    fetchProfiles();
   }, []);
-
-  // Auto-search when relevant parameters change
 
   const fetchFilterOptions = async () => {
     try {
@@ -129,7 +126,20 @@ function App() {
   };
 
   const handleAddFilter = (filter: Filter) => {
-    setFilters([...filters, filter]);
+    // Check if a filter with the same field already exists
+    const existingFilterIndex = filters.findIndex(
+      (f) => f.field === filter.field
+    );
+
+    if (existingFilterIndex !== -1) {
+      // Replace the existing filter instead of adding a new one
+      const updatedFilters = [...filters];
+      updatedFilters[existingFilterIndex] = filter;
+      setFilters(updatedFilters);
+    } else {
+      // Add the new filter
+      setFilters([...filters, filter]);
+    }
   };
 
   const handleRemoveFilter = (index: number) => {

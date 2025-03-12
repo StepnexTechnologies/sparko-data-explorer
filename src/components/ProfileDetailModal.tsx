@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Profile } from "../types";
 
 interface ProfileDetailModalProps {
@@ -8,6 +8,7 @@ interface ProfileDetailModalProps {
 
 const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [imageError, setImageError] = useState(false);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -46,13 +47,30 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
     };
   }, [onClose]);
 
+  // Reset image error when profile changes
+  useEffect(() => {
+    setImageError(false);
+  }, [profile]);
+
   if (!profile) {
     return null;
   }
 
+  // Function to get the profile image URL
+  const getProfileImageUrl = (username: string | undefined) => {
+    if (!username) {
+      return null;
+    }
+
+    // Construct the URL with the username and .jpg extension
+    return `https://sparkonomy.blr1.digitaloceanspaces.com/instagram_profile_pictures/${username}.jpg`;
+  };
+
   // Format date for display
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) {
+      return "N/A";
+    }
     try {
       return new Date(dateString).toLocaleString();
     } catch {
@@ -66,7 +84,7 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
   };
 
   // Format field value based on its type
-  const formatFieldValue = (key: string, value: string | number | boolean | null | undefined | string[] | Record<string, unknown>) => {
+  const formatFieldValue = (key: string, value: any) => {
     if (value === null || value === undefined) {
       return "N/A";
     }
@@ -88,12 +106,36 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
     }
 
     if (typeof value === "object") {
-      return <pre className="json-data">{JSON.stringify(value, null, 2)}</pre>;
+      try {
+        return (
+          <pre className="json-data">{JSON.stringify(value, null, 2)}</pre>
+        );
+      } catch (e) {
+        return "Invalid object data";
+      }
     }
 
     return String(value);
   };
 
+  // Safely get username for display
+  const getUsername = () => {
+    return profile.username || "No username";
+  };
+
+  // Safely get first letter for avatar
+  const getAvatarLetter = () => {
+    return (profile.username?.[0] || "?").toUpperCase();
+  };
+
+  // Handle image loading error
+  const handleImageError = () => {
+    console.log("Profile modal image failed to load");
+    setImageError(true);
+  };
+
+  // Get image URL
+  const imageUrl = getProfileImageUrl(profile.username);
 
   return (
     <div className="modal-overlay">
@@ -101,13 +143,23 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
         <div className="modal-header">
           <div className="modal-title">
             <div className="profile-avatar">
-              <div className="avatar-placeholder large">
-                {(profile.username?.[0] || "?").toUpperCase()}
-              </div>
+              {imageUrl && !imageError ? (
+                <img
+                  src={imageUrl}
+                  alt={getUsername()}
+                  className="avatar-image large"
+                  onError={handleImageError}
+                  loading="lazy"
+                />
+              ) : (
+                <div className="avatar-placeholder large">
+                  {getAvatarLetter()}
+                </div>
+              )}
             </div>
             <div className="profile-title">
               <h2 className="profile-username">
-                {profile.username || "No username"}
+                {getUsername()}
                 {profile.is_verified && (
                   <span className="verified-badge" title="Verified">
                     ✓
@@ -123,16 +175,13 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
         </div>
 
         <div className="modal-content">
-
           {/* All profile fields in a simple list */}
           <div className="profile-all-fields-section">
             <div className="profile-details-grid">
               {Object.entries(profile)
                 .filter(
-                  ([key, value]) =>
-                    // Filter out null/undefined values and profile picture URL
-                    value !== null &&
-                    value !== undefined &&
+                  ([key]) =>
+                    // Filter out profile picture URL as we're handling it separately
                     key !== "profile_pic_url"
                 )
                 .sort(([keyA], [keyB]) => keyA.localeCompare(keyB)) // Sort alphabetically

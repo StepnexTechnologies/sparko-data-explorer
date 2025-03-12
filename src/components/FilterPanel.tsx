@@ -68,7 +68,9 @@ const FilterPanel = ({
     const selectedOption = filterOptions.find(
       (option) => option.field === newFilter.field
     );
-    if (!selectedOption || !newFilter.operator) return null;
+    if (!selectedOption || !newFilter.operator) {
+      return null;
+    }
 
     const { data_type } = selectedOption;
 
@@ -166,7 +168,11 @@ const FilterPanel = ({
           <input
             type="text"
             className="filter-input"
-            value={String(newFilter.value)}
+            value={
+              Array.isArray(newFilter.value)
+                ? newFilter.value.join(",")
+                : String(newFilter.value)
+            }
             onChange={(e) =>
               handleValueChange(e.target.value.split(",").map((v) => v.trim()))
             }
@@ -208,6 +214,22 @@ const FilterPanel = ({
       newFilter.value !== 0
     ) {
       setValidationError("Please enter a value");
+      return;
+    }
+
+    // Check if a filter with the same field already exists
+    const existingFilterIndex = filters.findIndex(
+      (filter) => filter.field === newFilter.field
+    );
+
+    if (existingFilterIndex !== -1) {
+      setValidationError(
+        `A filter for ${selectedOption.field
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (l) =>
+            l.toUpperCase()
+          )} already exists. Please remove it first.`
+      );
       return;
     }
 

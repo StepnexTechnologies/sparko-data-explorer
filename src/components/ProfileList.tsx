@@ -46,12 +46,18 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
   };
 
   const handleImageError = (profileId: string) => {
+    console.log(`Image loading error for profile: ${profileId}`);
     setImageErrors((prev) => ({ ...prev, [profileId]: true }));
   };
 
   // Get profile unique identifier for tracking image errors
   const getProfileId = (profile: Profile): string => {
-    return profile.id || profile.instagram_id || profile.username || "";
+    return (
+      profile.id ||
+      profile.instagram_id ||
+      profile.username ||
+      Math.random().toString(36)
+    );
   };
 
   const handleProfileClick = (profile: Profile) => {
@@ -60,6 +66,22 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
 
   const closeModal = () => {
     setSelectedProfile(null);
+  };
+
+  // Safely access profile properties with null/undefined checks
+  const safeGetValue = <T,>(
+    value: T | null | undefined,
+    defaultValue: T
+  ): T => {
+    return value !== null && value !== undefined ? value : defaultValue;
+  };
+
+  // Function to get the image URL exactly as specified
+  const getProfileImageUrl = (username: string | undefined) => {
+    if (!username) return null;
+
+    // Construct the URL exactly as specified with the username and .jpg extension
+    return `https://sparkonomy.blr1.digitaloceanspaces.com/instagram_profile_pictures/${username}.jpg`;
   };
 
   // Dynamically get key details to display on the card
@@ -119,6 +141,7 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
           const profileId = getProfileId(profile);
           const details = getDisplayDetails(profile);
           const badges = getProfileBadges(profile);
+          const imageUrl = getProfileImageUrl(profile.username);
 
           return (
             <div
@@ -127,16 +150,19 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
               onClick={() => handleProfileClick(profile)}
             >
               <div className="profile-list-avatar">
-                {profile.profile_pic_url && !imageErrors[profileId] ? (
+                {imageUrl && !imageErrors[profileId] ? (
                   <img
-                    src={profile.profile_pic_url}
-                    alt={profile.username || "Profile"}
+                    src={imageUrl}
+                    alt={safeGetValue(profile.username, "Profile")}
                     className="avatar-image"
                     onError={() => handleImageError(profileId)}
+                    loading="lazy"
                   />
                 ) : (
                   <div className="avatar-placeholder">
-                    {(profile.username?.[0] || "?").toUpperCase()}
+                    {(
+                      safeGetValue(profile.username, "?")[0] || "?"
+                    ).toUpperCase()}
                   </div>
                 )}
               </div>
@@ -145,44 +171,54 @@ const ProfileList = ({ profiles }: ProfileListProps) => {
                 <div className="profile-list-header">
                   <div className="profile-list-name">
                     <h3 className="username">
-                      {profile.username || "No username"}
+                      {safeGetValue(profile.username, "No username")}
                       {profile.is_verified && (
                         <span className="verified-badge" title="Verified">
                           ✓
                         </span>
                       )}
                     </h3>
-                    <p className="fullname">{profile.full_name || ""}</p>
+                    <p className="fullname">
+                      {safeGetValue(profile.full_name, "")}
+                    </p>
                   </div>
                   <div className="profile-list-stats">
-                    {profile.followed_by_count !== undefined && (
-                      <span className="stat">
-                        <strong>
-                          {profile.followed_by_count.toLocaleString()}
-                        </strong>{" "}
-                        followers
-                      </span>
-                    )}
-                    {profile.follow_count !== undefined && (
-                      <span className="stat">
-                        <strong>{profile.follow_count.toLocaleString()}</strong>{" "}
-                        following
-                      </span>
-                    )}
-                    {profile.posts_count !== undefined && (
-                      <span className="stat">
-                        <strong>{profile.posts_count.toLocaleString()}</strong>{" "}
-                        posts
-                      </span>
-                    )}
-                    {profile.igtv_videos_count !== undefined && (
-                      <span className="stat">
-                        <strong>
-                          {profile.igtv_videos_count.toLocaleString()}
-                        </strong>{" "}
-                        IGTV
-                      </span>
-                    )}
+                    {profile.followed_by_count !== undefined &&
+                      profile.followed_by_count !== null && (
+                        <span className="stat">
+                          <strong>
+                            {profile.followed_by_count.toLocaleString()}
+                          </strong>{" "}
+                          followers
+                        </span>
+                      )}
+                    {profile.follow_count !== undefined &&
+                      profile.follow_count !== null && (
+                        <span className="stat">
+                          <strong>
+                            {profile.follow_count.toLocaleString()}
+                          </strong>{" "}
+                          following
+                        </span>
+                      )}
+                    {profile.posts_count !== undefined &&
+                      profile.posts_count !== null && (
+                        <span className="stat">
+                          <strong>
+                            {profile.posts_count.toLocaleString()}
+                          </strong>{" "}
+                          posts
+                        </span>
+                      )}
+                    {profile.igtv_videos_count !== undefined &&
+                      profile.igtv_videos_count !== null && (
+                        <span className="stat">
+                          <strong>
+                            {profile.igtv_videos_count.toLocaleString()}
+                          </strong>{" "}
+                          IGTV
+                        </span>
+                      )}
                   </div>
                 </div>
 
