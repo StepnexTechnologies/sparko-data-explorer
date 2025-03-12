@@ -24,7 +24,6 @@ function App() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [limit, setLimit] = useState<number>(100);
   const [offset, setOffset] = useState<number>(0);
-  const [autoSearch, setAutoSearch] = useState<boolean>(true);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
   // Fetch filter options and initial profiles on mount
@@ -34,11 +33,6 @@ function App() {
   }, []);
 
   // Auto-search when relevant parameters change
-  useEffect(() => {
-    if (autoSearch) {
-      fetchProfiles();
-    }
-  }, [filters, autoSearch, sortBy, sortOrder, limit]);
 
   const fetchFilterOptions = async () => {
     try {
@@ -284,7 +278,6 @@ function App() {
             value={sortBy}
             onChange={(e) => {
               setSortBy(e.target.value);
-              if (autoSearch) fetchProfiles();
             }}
           >
             <option value="">None</option>
@@ -308,7 +301,6 @@ function App() {
             value={sortOrder}
             onChange={(e) => {
               setSortOrder(e.target.value as "asc" | "desc");
-              if (autoSearch) fetchProfiles();
             }}
           >
             <option value="asc">Ascending</option>
@@ -327,28 +319,12 @@ function App() {
             value={limit}
             onChange={(e) => {
               setLimit(Number(e.target.value));
-              if (autoSearch) fetchProfiles();
             }}
             min={1}
             max={1000}
           />
         </div>
 
-        <div className="filter-group toggle-group">
-          <label className="filter-label" htmlFor="auto-search">
-            Auto-Search
-          </label>
-          <div className="toggle-switch">
-            <input
-              type="checkbox"
-              id="auto-search"
-              checked={autoSearch}
-              onChange={() => setAutoSearch(!autoSearch)}
-            />
-            <label htmlFor="auto-search"></label>
-          </div>
-        </div>
-      </div>
 
       {loading && profiles.length === 0 ? (
         <div className="results-container">
