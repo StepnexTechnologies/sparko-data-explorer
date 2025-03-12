@@ -324,7 +324,7 @@ function App() {
             max={1000}
           />
         </div>
-
+      </div>
 
       {loading && profiles.length === 0 ? (
         <div className="results-container">
