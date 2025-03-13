@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import FilterPanel from "./components/FilterPanel";
 import ProfileList from "./components/ProfileList";
+import Login from "./components/Login";
+import { isAuthenticated, getAuthToken, logout } from "./services/authService";
 import type {
   Filter,
   FilterOption,
@@ -15,6 +17,7 @@ const API_BASE_URL = import.meta.env.DEV
   : "https://spark-scraper-api.sparkonomy.com";
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -26,15 +29,41 @@ function App() {
   const [offset, setOffset] = useState<number>(0);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-  // Fetch filter options on mount
+  // Check authentication status on mount
   useEffect(() => {
-    fetchFilterOptions();
+    setIsLoggedIn(isAuthenticated());
   }, []);
+
+  // Fetch filter options on mount or when login state changes
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchFilterOptions();
+    }
+  }, [isLoggedIn]);
 
   const fetchFilterOptions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/filters`);
+
+      const headers: HeadersInit = {
+        Accept: "application/json",
+      };
+
+      // Add authentication header if we have a token
+      const authToken = getAuthToken();
+      if (authToken) {
+        headers["Authorization"] = authToken;
+      }
+
+      // Use the regular filters endpoint (no auth prefix)
+      const response = await fetch(`${API_BASE_URL}/filters`, { headers });
+
+      if (response.status === 401) {
+        // If unauthorized, clear token and go back to login
+        setError("Your session has expired. Please login again.");
+        handleLogout();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -75,14 +104,31 @@ function App() {
         offset,
       };
 
-      const response = await fetch(`${API_BASE_URL}/profiles/filter`, {
+      // Prepare headers with authentication
+      const headers: HeadersInit = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      };
+
+      // Add authentication header if we have a token
+      const authToken = getAuthToken();
+      if (authToken) {
+        headers["Authorization"] = authToken;
+      }
+
+      // Use the auth endpoint for profiles
+      const response = await fetch(`${API_BASE_URL}/auth/profiles/filter`, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(requestBody),
       });
+
+      if (response.status === 401) {
+        // If unauthorized, clear token and go back to login
+        setError("Your session has expired. Please login again.");
+        handleLogout();
+        return;
+      }
 
       if (!response.ok) {
         const errorData: HTTPValidationError = await response.json();
@@ -123,6 +169,19 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+    setError(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsLoggedIn(false);
+    setProfiles([]);
+    setFilters([]);
+    setFilterOptions([]);
   };
 
   const handleAddFilter = (filter: Filter) => {
@@ -226,9 +285,22 @@ function App() {
     setShowExportOptions(false);
   };
 
+  // If not logged in, show login screen
+  if (!isLoggedIn) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="container">
-      <h1 className="title">Profile Filter</h1>
+      <header className="app-header">
+        <h1 className="title">Profile Filter</h1>
+        <button
+          onClick={handleLogout}
+          className="button button-outline button-sm"
+        >
+          Logout
+        </button>
+      </header>
 
       {error && <div className="error-message">{error}</div>}
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Profile } from "../types";
+import { getAuthToken } from "../services/authService";
 
 // Define a simple Post type for what we need
 interface Post {
@@ -37,15 +38,24 @@ const ProfileDetailModal = ({ profile, onClose }: ProfileDetailModalProps) => {
     try {
       setLoadingPosts(true);
 
-      // Use POST method instead of GET - this fixes the 405 Method Not Allowed error
+      // Prepare headers with authentication
+      const headers: HeadersInit = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      };
+
+      // Add authentication header if we have a token
+      const authToken = getAuthToken();
+      if (authToken) {
+        headers["Authorization"] = authToken;
+      }
+
+      // Use the auth endpoint for profile posts
       const response = await fetch(
-        `${API_BASE_URL}/profiles/posts/${profileId}`,
+        `${API_BASE_URL}/auth/profiles/posts/${profileId}`,
         {
           method: "POST", // Changed from GET to POST
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
+          headers,
           // Send an empty body or you can add parameters if needed
           body: JSON.stringify({}),
         }
