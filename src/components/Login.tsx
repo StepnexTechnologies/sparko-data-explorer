@@ -1,15 +1,15 @@
 // src/components/Login.tsx
 import { useState } from "react";
-import { login, TEST_CREDENTIALS } from "../services/authService";
+import { login } from "../services/authService";
 
 interface LoginProps {
   onLoginSuccess: () => void;
 }
 
 const Login = ({ onLoginSuccess }: LoginProps) => {
-  // Pre-fill with testing credentials
-  const [username, setUsername] = useState(TEST_CREDENTIALS.username);
-  const [password, setPassword] = useState(TEST_CREDENTIALS.password);
+  // No longer pre-fill with testing credentials
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +60,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
+              placeholder="Enter your username"
             />
           </div>
 
@@ -74,6 +75,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
+              placeholder="Enter your password"
             />
           </div>
 

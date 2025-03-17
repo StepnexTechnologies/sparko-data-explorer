@@ -28,6 +28,8 @@ function App() {
   const [limit, setLimit] = useState<number>(100);
   const [offset, setOffset] = useState<number>(0);
   const [showExportOptions, setShowExportOptions] = useState(false);
+  // Track filter actions separately from main loading state
+  const [filterLoading, setFilterLoading] = useState<boolean>(false);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -40,6 +42,15 @@ function App() {
       fetchFilterOptions();
     }
   }, [isLoggedIn]);
+
+  // Effect to fetch profiles when filters change
+  useEffect(() => {
+    // Skip the first render and only fetch if we have filters
+    if (filters.length > 0) {
+      setOffset(0);
+      fetchProfiles();
+    }
+  }, [filters]); // This will trigger a fetch when filters array changes
 
   const fetchFilterOptions = async () => {
     try {
@@ -82,7 +93,13 @@ function App() {
 
   const fetchProfiles = async () => {
     try {
-      setLoading(true);
+      // Set loading state based on whether we already have profiles
+      if (profiles.length === 0) {
+        setLoading(true);
+      } else {
+        setFilterLoading(true);
+      }
+
       setError(null);
 
       const requestBody: FilterRequest = {
@@ -168,6 +185,7 @@ function App() {
       setProfiles([]);
     } finally {
       setLoading(false);
+      setFilterLoading(false);
     }
   };
 
@@ -199,12 +217,19 @@ function App() {
       // Add the new filter
       setFilters([...filters, filter]);
     }
+
+    // No need to manually call fetchProfiles, useEffect will handle this
   };
 
   const handleRemoveFilter = (index: number) => {
     const updatedFilters = [...filters];
     updatedFilters.splice(index, 1);
     setFilters(updatedFilters);
+
+    // If all filters are removed, clear the profiles
+    if (updatedFilters.length === 0) {
+      setProfiles([]);
+    }
   };
 
   const handleSearch = () => {
@@ -290,6 +315,8 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const isAnyLoading = loading || filterLoading;
+
   return (
     <div className="container">
       <header className="app-header">
@@ -311,7 +338,7 @@ function App() {
         onRemoveFilter={handleRemoveFilter}
         onSearch={handleSearch}
         onClearFilters={handleClearFilters}
-        loading={loading}
+        loading={isAnyLoading}
       />
 
       <div className="sort-controls">
@@ -440,14 +467,33 @@ function App() {
               {profiles.length} profiles found
             </span>
           </div>
-          <ProfileList profiles={profiles} />
-          {loading && (
+
+          {/* Only show this loading indicator when updating existing results */}
+          {filterLoading && (
+            <div
+              className="loading-more"
+              style={{
+                padding: "10px 20px",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <div className="loading-spinner"></div>
+              Updating results...
+            </div>
+          )}
+
+          {/* Only render the ProfileList when not in initial loading state */}
+          {!loading && <ProfileList profiles={profiles} />}
+
+          {/* Show loading indicator for "Load More" action */}
+          {loading && !filterLoading && profiles.length > 0 && (
             <div className="loading-more">
               <div className="loading-spinner"></div>
               Loading more...
             </div>
           )}
-          {!loading && profiles.length >= limit && (
+
+          {!isAnyLoading && profiles.length >= limit && (
             <div className="actions-bar">
               <button
                 type="button"
